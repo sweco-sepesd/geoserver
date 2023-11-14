@@ -15,6 +15,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -153,6 +154,31 @@ public class CssHandler extends StyleHandler implements ModuleStatus {
     private StyledLayerDescriptor convertToSLD(Reader cssReader) throws IOException {
         Stylesheet styleSheet = CssParser.parse(IOUtils.toString(cssReader));
         Style style = (Style) new CssTranslator().translate(styleSheet);
+        Map<String, ArrayList<String>> ruleNames = new HashMap<String, ArrayList<String>>();
+        style.featureTypeStyles()
+                .forEach(
+                        ftStyle ->
+                                ftStyle.rules()
+                                        .forEach(
+                                                rule -> {
+                                                    String oldName = rule.getName();
+                                                    if (oldName == null) {
+                                                        oldName = "cssrule";
+                                                    }
+                                                    ruleNames.putIfAbsent(
+                                                            oldName, new ArrayList<String>());
+                                                    ArrayList<String> siblings =
+                                                            ruleNames.get(oldName);
+                                                    String newName =
+                                                            (siblings.size() == 0)
+                                                                    ? oldName
+                                                                    : String.format(
+                                                                            "%s %d",
+                                                                            oldName,
+                                                                            siblings.size() + 1);
+                                                    siblings.add(newName);
+                                                    rule.setName(newName);
+                                                }));
         StyledLayerDescriptor sld = Styles.sld(style);
         return sld;
     }
